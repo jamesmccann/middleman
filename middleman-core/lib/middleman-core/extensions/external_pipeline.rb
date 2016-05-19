@@ -29,15 +29,19 @@ class Middleman::Extensions::ExternalPipeline < ::Middleman::Extension
     @current_thread = nil
     app.reload(&method(:reload!))
 
-    logger.info "== Executing: `#{options[:command]}`"
-
-    if app.build? || options[:disable_background_execution]
-      watch_command!(false)
-
-      @watcher.poll_once!
-    else
-      watch_command!(true)
+    unless app.build?
+      if options[:disable_background_execution]
+        watch_command!(false)
+        @watcher.poll_once!
+      else
+        watch_command!(true)
+      end
     end
+  end
+
+  def before_build
+    watch_command!(false)
+    @watcher.poll_once!
   end
 
   def reload!
@@ -50,6 +54,8 @@ class Middleman::Extensions::ExternalPipeline < ::Middleman::Extension
   end
 
   def watch_command!(async)
+    logger.info "== Executing: `#{options[:command]}`"
+
     @current_thread = ::Servolux::Child.new(
       command: options[:command],
       suspend: 2
